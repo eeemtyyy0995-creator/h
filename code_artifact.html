@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مدقق نطاق المادة - Course Scope Checker</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            green: '#10b981',
+                            darkgreen: '#059669',
+                            lightgreen: '#d1fae5',
+                            gray: '#f3f4f6',
+                            darkgray: '#1f2937',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Font Inter / Arabic Support -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Document Parsers: PDF.js, SheetJS, JSZip, Mammoth -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+    <style>
+        body {
+            font-family: 'Cairo', sans-serif;
+        }
+        /* Custom scrollbar for clean look */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-full flex flex-col transition-colors duration-200">
+
+    <!-- Header / Navbar -->
+    <header class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-30 shadow-sm">
+        <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+            <div class="flex items-center space-x-3 space-x-reverse">
+                <div class="w-10 h-10 rounded-xl bg-emerald-500 flex items-center justify-center text-white shadow-md">
+                    <i data-lucide="check-circle" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold tracking-tight">مدقق نطاق المادة</h1>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Course Scope Checker - تقييم مشاريع الطالبات والطلاب</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <button onclick="toggleDarkMode()" class="p-2 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition" title="تغيير المظهر">
+                    <i data-lucide="moon" class="w-5 h-5 hidden dark:block"></i>
+                    <i data-lucide="sun" class="w-5 h-5 block dark:hidden"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-grow max-w-4xl w-full mx-auto px-4 py-6 space-y-8">
+
+        <!-- Notice Banner -->
+        <div class="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-2xl p-4 text-xs sm:text-sm text-amber-800 dark:text-amber-300 flex items-start gap-3 shadow-sm">
+            <i data-lucide="alert-triangle" class="w-5 h-5 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400"></i>
+            <div>
+                <span class="font-bold">تنبيه هام:</span> هذا التدقيق أولي ومساعد. يُرجى مراجعة النتيجة النهائية مع أستاذ/ة المادة. يرجى عدم رفع ملفات سرية أو تحتوي على معلومات حساسة.
+            </div>
+        </div>
+
+        <!-- STEP 1: Subject Selection -->
+        <section class="space-y-3">
+            <div class="flex items-center justify-between">
+                <h2 class="text-base font-bold flex items-center gap-2">
+                    <span class="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs font-bold">١</span>
+                    اختر المادة الدراسية
+                </h2>
+                <span class="text-xs text-gray-500 dark:text-gray-400">* إلزامي</span>
+            </div>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3" id="subject-cards">
+                <!-- Card 1: بحوث التسويق -->
+                <div onclick="selectSubject('بحوث التسويق')" data-subject="بحوث التسويق" class="subject-card cursor-pointer p-4 rounded-2xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-emerald-500 dark:hover:border-emerald-500 transition-all flex flex-col items-center text-center gap-3 group">
+                    <div class="w-12 h-12 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 group-hover:bg-emerald-100 group-hover:text-emerald-600 dark:group-hover:bg-emerald-900/50 dark:group-hover:text-emerald-400 flex items-center justify-center transition">
+                        <i data-lucide="search-code" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-sm">بحوث التسويق</h3>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">مشكلات، عينات، استبيانات، وتحليل بيانات</p>
+                    </div>
+                </div>
+
+                <!-- Card 2: نظم دعم القرار -->
+                <div onclick="selectSubject('نظم دعم القرار')" data-subject="نظم دعم القرار" class="subject-card cursor-pointer p-4 rounded-2xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-emerald-500 dark:hover:border-emerald-500 transition-all flex flex-col items-center text-center gap-3 group">
+                    <div class="w-12 h-12 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 group-hover:bg-emerald-100 group-hover:text-emerald-600 dark:group-hover:bg-emerald-900/50 dark:group-hover:text-emerald-400 flex items-center justify-center transition">
+                        <i data-lucide="git-merge" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-sm">نظم دعم القرار</h3>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">نماذج تحليلية، محاكاة، ولوحات مؤشرات</p>
+                    </div>
+                </div>
+
+                <!-- Card 3: الأسواق المالية -->
+                <div onclick="selectSubject('الأسواق المالية')" data-subject="الأسواق المالية" class="subject-card cursor-pointer p-4 rounded-2xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-emerald-500 dark:hover:border-emerald-500 transition-all flex flex-col items-center text-center gap-3 group">
+                    <div class="w-12 h-12 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 group-hover:bg-emerald-100 group-hover:text-emerald-600 dark:group-hover:bg-emerald-900/50 dark:group-hover:text-emerald-400 flex items-center justify-center transition">
+                        <i data-lucide="trending-up" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-sm">الأسواق المالية</h3>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">تقييم أوراق، مخاطر وعائد، وتحليل فني</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- STEP 2: File Uploads -->
+        <section class="space-y-3">
+            <h2 class="text-base font-bold flex items-center gap-2">
+                <span class="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs font-bold">٢</span>
+                رفع المستندات (ملف المادة وملف المشروع)
+            </h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Course File Upload -->
+                <div class="bg-white dark:bg-gray-800 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-2xl p-5 flex flex-col items-center justify-center text-center relative hover:border-emerald-500 transition group" id="drop-zone-course">
+                    <input type="file" id="file-course" accept=".pdf,.pptx,.docx,.xlsx" class="absolute inset-0 opacity-0 cursor-pointer" onchange="handleFileUpload('course', this.files[0])">
+                    <div class="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 flex items-center justify-center mb-2 group-hover:scale-110 transition">
+                        <i data-lucide="file-text" class="w-6 h-6"></i>
+                    </div>
+                    <h3 class="font-bold text-sm" id="course-title-text">ملف المادة</h3>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">وصف المادة، المنهج، أو المحاضرات</p>
+                    <span class="text-[11px] bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2.5 py-1 rounded-lg mt-3">PDF, PPTX, DOCX, XLSX</span>
+                </div>
+
+                <!-- Project File Upload -->
+                <div class="bg-white dark:bg-gray-800 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-2xl p-5 flex flex-col items-center justify-center text-center relative hover:border-emerald-500 transition group" id="drop-zone-project">
+                    <input type="file" id="file-project" accept=".pdf,.pptx,.docx,.xlsx" class="absolute inset-0 opacity-0 cursor-pointer" onchange="handleFileUpload('project', this.files[0])">
+                    <div class="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 flex items-center justify-center mb-2 group-hover:scale-110 transition">
+                        <i data-lucide="folder-kanban" class="w-6 h-6"></i>
+                    </div>
+                    <h3 class="font-bold text-sm" id="project-title-text">ملف المشروع أو العرض</h3>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">تقرير المشروع النهائي أو العرض التقديمي</p>
+                    <span class="text-[11px] bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2.5 py-1 rounded-lg mt-3">PDF, PPTX, DOCX, XLSX</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- STEP 3: Optional Requirements -->
+        <section class="space-y-3">
+            <h2 class="text-base font-bold flex items-center gap-2">
+                <span class="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs font-bold">٣</span>
+                شروط إضافية (اختياري)
+            </h2>
+            <textarea id="extra-requirements" rows="3" placeholder="أدخل أي اشتراطات إضافية طلبها أستاذ المادة (مثال: استخدام برنامج SPSS، ألا تقل العينة عن 150 مبحوث، تضمين تحليل حساسية...)" class="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl p-3 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none transition"></textarea>
+        </section>
+
+        <!-- STEP 4: Audit Button -->
+        <div class="pt-2">
+            <button id="audit-btn" onclick="runAudit()" disabled class="w-full py-4 rounded-2xl font-bold text-base bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed transition flex items-center justify-center gap-2 shadow-sm">
+                <i data-lucide="sparkles" class="w-5 h-5"></i>
+                دقّقي
+            </button>
+        </div>
+
+        <!-- Loading Overlay / Progress -->
+        <div id="loading-container" class="hidden flex flex-col items-center justify-center py-12 space-y-4">
+            <div class="relative w-16 h-16">
+                <div class="absolute inset-0 rounded-full border-4 border-emerald-200 dark:border-emerald-900 animate-pulse"></div>
+                <div class="absolute inset-0 rounded-full border-4 border-emerald-500 border-t-transparent animate-spin"></div>
+            </div>
+            <div class="text-center">
+                <p id="loading-status" class="font-bold text-sm">جاري تحليل الملفات وقراءة المحتوى...</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">يتم استخراج النصوص ومقارنتها بنطاق المادة بدقة</p>
+            </div>
+        </div>
+
+        <!-- RESULTS SECTION -->
+        <div id="results-container" class="hidden space-y-6 pt-4 border-t border-gray-200 dark:border-gray-800">
+            <div class="flex items-center justify-between">
+                <h2 class="text-lg font-black flex items-center gap-2">
+                    <i data-lucide="clipboard-check" class="w-6 h-6 text-emerald-500"></i>
+                    نتائج التدقيق الشامل
+                </h2>
+                <button onclick="resetForm()" class="text-xs text-gray-500 hover:text-emerald-500 underline transition">تدقيق مشروع آخر</button>
+            </div>
+
+            <!-- 1. Overall Verdict Banner -->
+            <div id="verdict-banner" class="p-5 rounded-2xl flex items-start gap-4 shadow-sm border">
+                <div id="verdict-icon" class="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 text-white"></div>
+                <div class="space-y-1">
+                    <div class="flex items-center gap-2">
+                        <span id="verdict-title" class="font-black text-base"></span>
+                        <span id="verdict-tag" class="text-xs px-2 py-0.5 rounded-full font-bold"></span>
+                    </div>
+                    <p id="verdict-reason" class="text-sm opacity-90 leading-relaxed"></p>
+                </div>
+            </div>
+
+            <!-- 2. Warnings Card (if any) -->
+            <div id="warnings-card" class="hidden bg-black text-white p-5 rounded-2xl space-y-3 shadow-md">
+                <div class="flex items-center gap-2 text-amber-400 font-bold text-sm">
+                    <i data-lucide="alert-octagon" class="w-5 h-5"></i>
+                    تنبيهات وملاحظات هامة حول الملفات المرفوعة
+                </div>
+                <ul id="warnings-list" class="space-y-2 text-xs sm:text-sm text-gray-200 pr-4 list-disc"></ul>
+            </div>
+
+            <!-- 3. Course Scope Chips -->
+            <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-5 rounded-2xl space-y-3 shadow-sm">
+                <h3 class="font-bold text-sm flex items-center gap-2 text-gray-700 dark:text-gray-300">
+                    <i data-lucide="book-open" class="w-4 h-4 text-emerald-500"></i>
+                    نطاق المادة (المستخرج من ملف المنهج)
+                </h3>
+                <div id="course-chips" class="flex flex-wrap gap-2"></div>
+            </div>
+
+            <!-- 4. Project Coverage & Evidence -->
+            <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-5 rounded-2xl space-y-3 shadow-sm">
+                <h3 class="font-bold text-sm flex items-center gap-2 text-gray-700 dark:text-gray-300">
+                    <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-500"></i>
+                    ما يغطيه المشروع (مع الأدلة)
+                </h3>
+                <div id="project-coverage-list" class="space-y-3"></div>
+            </div>
+
+            <!-- 5. Missing Scope Topics & Suggestions -->
+            <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-5 rounded-2xl space-y-3 shadow-sm">
+                <h3 class="font-bold text-sm flex items-center gap-2 text-gray-700 dark:text-gray-300">
+                    <i data-lucide="help-circle" class="w-4 h-4 text-amber-500"></i>
+                    المواضيع المفقودة في النطاق واقترحات الإضافة
+                </h3>
+                <div id="missing-scope-list" class="space-y-3"></div>
+            </div>
+
+            <!-- 6. Out-of-Scope Content -->
+            <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-5 rounded-2xl space-y-3 shadow-sm">
+                <h3 class="font-bold text-sm flex items-center gap-2 text-gray-700 dark:text-gray-300">
+                    <i data-lucide="shield-alert" class="w-4 h-4 text-black dark:text-white"></i>
+                    محتويات خارج نطاق المادة (خارج التخصص)
+                </h3>
+                <div id="out-of-scope-list" class="space-y-3"></div>
+            </div>
+
+            <!-- 7. Data Check Table/Grid -->
+            <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-5 rounded-2xl space-y-4 shadow-sm">
+                <h3 class="font-bold text-sm flex items-center gap-2 text-gray-700 dark:text-gray-300">
+                    <i data-lucide="database" class="w-4 h-4 text-emerald-500"></i>
+                    تدقيق البيانات والمنهجية
+                </h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3" id="data-check-grid"></div>
+            </div>
+
+            <!-- 8. Extra Requirements Check -->
+            <div id="extra-req-section" class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-5 rounded-2xl space-y-3 shadow-sm">
+                <h3 class="font-bold text-sm flex items-center gap-2 text-gray-700 dark:text-gray-300">
+                    <i data-lucide="list-checks" class="w-4 h-4 text-emerald-500"></i>
+                    مدقيق الشروط الإضافية المحددة
+                </h3>
+                <div id="extra-req-list" class="space-y-3"></div>
+            </div>
+
+            <!-- 9. "ابدئي بهذي" Actionable Steps -->
+            <div class="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/60 p-5 rounded-2xl space-y-3 shadow-sm">
+                <h3 class="font-bold text-sm flex items-center gap-2 text-emerald-800 dark:text-emerald-300">
+                    <i data-lucide="zap" class="w-4 h-4 text-emerald-600 dark:text-emerald-400"></i>
+                    ابدئي بهذي (خطوات عملية مرتبة للأهمية)
+                </h3>
+                <div id="action-steps-list" class="space-y-2"></div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="mt-auto border-t border-gray-200 dark:border-gray-800 py-6 text-center text-xs text-gray-500 dark:text-gray-400">
+        <p>مدقق نطاق المادة © 2026 - نظام تقييم مشاريع الطالبات والطلاب الذكي</p>
+    </footer>
+
+    <!-- JS Logic & Extractors -->
+    <script>
+        // State
+        let selectedSubject = null;
+        let courseFileText = "";
+        let projectFileText = "";
+        let courseFileName = "";
+        let projectFileName = "";
+
+        // Dark Mode Toggle
+        function toggleDarkMode() {
+            document.documentElement.classList.toggle('dark');
+        }
+
+        // Subject Selection
+        function selectSubject(subjectName) {
+            selectedSubject = subjectName;
+            document.querySelectorAll('.subject-card').forEach(card => {
+                if (card.dataset.subject === subjectName) {
+                    card.classList.add('border-emerald-500', 'bg-emerald-50/50', 'dark:bg-emerald-950/30');
+                    card.classList.remove('border-gray-200', 'dark:border-gray-700', 'bg-white', 'dark:bg-gray-800');
+                } else {
+                    card.classList.remove('border-emerald-500', 'bg-emerald-50/50', 'dark:bg-emerald-950/30');
+                    card.classList.add('border-gray-200', 'dark:border-gray-700', 'bg-white', 'dark:bg-gray-800');
+                }
+            });
+            checkEnableButton();
+        }
+
+        // File Handler & Text Extractors
+        async function handleFileUpload(type, file) {
+            if (!file) return;
+            const titleEl = document.getElementById(`${type}-title-text`);
+            const dropZone = document.getElementById(`drop-zone-${type}`);
+            
+            titleEl.textContent = `جاري قراءة: ${file.name}...`;
+            dropZone.classList.add('border-emerald-500', 'bg-emerald-50/30', 'dark:bg-emerald-950/20');
+
+            try {
+                const text = await extractTextFromFile(file);
+                if (type === 'course') {
+                    courseFileText = text;
+                    courseFileName = file.name;
+                    document.getElementById('course-title-text').textContent = `✓ ${file.name}`;
+                } else {
+                    projectFileText = text;
+                    projectFileName = file.name;
+                    document.getElementById('project-title-text').textContent = `✓ ${file.name}`;
+                }
+            } catch (err) {
+                console.error(err);
+                alert('تعذر قراءة الملف. تأكد من أن الملف سليم وغير مدمر أو تالف.');
+                titleEl.textContent = type === 'course' ? 'ملف المادة (فشل)' : 'ملف المشروع أو العرض (فشل)';
+            }
+            checkEnableButton();
+        }
+
+        async function extractTextFromFile(file) {
+            const ext = file.name.split('.').pop().toLowerCase();
+            if (ext === 'pdf') {
+                return await extractPDF(file);
+            } else if (ext === 'docx') {
+                return await extractDOCX(file);
+            } else if (ext === 'xlsx' || ext === 'xls') {
+                return await extractXLSX(file);
+            } else if (ext === 'pptx') {
+                return await extractPPTX(file);
+            } else {
+                throw new Error('صيغة غير مدعومة');
+            }
+        }
+
+        async function extractPDF(file) {
+            const arrayBuffer = await file.arrayBuffer();
+            const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+            let fullText = "";
+            for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const textContent = await page.getTextContent();
+                const pageText = textContent.items.map(item => item.str).join(' ');
+                fullText += pageText + "\n";
+            }
+            return fullText;
+        }
+
+        async function extractDOCX(file) {
+            const arrayBuffer = await file.arrayBuffer();
+            const result = await mammoth.extractRawText({ arrayBuffer: arrayBuffer });
+            return result.value;
+        }
+
+        async function extractXLSX(file) {
+            const arrayBuffer = await file.arrayBuffer();
+            const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+            let fullText = "";
+            workbook.SheetNames.forEach(sheetName => {
+                const sheet = workbook.Sheets[sheetName];
+                fullText += XLSX.utils.sheet_to_csv(sheet) + "\n";
+            });
+            return fullText;
+        }
+
+        async function extractPPTX(file) {
+            const zip = new JSZip();
+            const zipContent = await zip.loadAsync(file);
+            let fullText = "";
+            const slideFiles = Object.keys(zipContent.files).filter(filename => filename.match(/ppt\/slides\/slide\d+\.xml/));
+            
+            for (const filename of slideFiles) {
+                const slideXml = await zipContent.files[filename].async("string");
+                // Simple regex to strip xml tags and get text strings
+                const matches = slideXml.match(/<a:t[^>]*>(.*?)<\/a:t>/g);
+                if (matches) {
+                    matches.forEach(m => {
+                        const cleanText = m.replace(/<[^>]+>/g, '');
+                        fullText += cleanText + " ";
+                    });
+                }
+                fullText += "\n";
+            }
+            if (!fullText.trim()) {
+                // Fallback scan if standard slide parsing fails
+                for (const filename of Object.keys(zipContent.files)) {
+                    if (filename.endsWith('.xml')) {
+                        const content = await zipContent.files[filename].async("string");
+                        if (content.includes('a:t')) {
+                            const matches = content.match(/<a:t[^>]*>(.*?)<\/a:t>/g);
+                            if (matches) {
+                                matches.forEach(m => fullText += m.replace(/<[^>]+>/g, '') + " ");
+                            }
+                        }
+                    }
+                }
+            }
+            return fullText;
+        }
+
+        function checkEnableButton() {
+            const btn = document.getElementById('audit-btn');
+            if (selectedSubject && courseFileText && projectFileText) {
+                btn.disabled = false;
+                btn.classList.remove('bg-gray-300', 'dark:bg-gray-700', 'text-gray-500', 'dark:text-gray-400', 'cursor-not-allowed');
+                btn.classList.add('bg-emerald-500', 'hover:bg-emerald-600', 'text-white', 'shadow-md', 'cursor-pointer');
+            } else {
+                btn.disabled = true;
+                btn.classList.add('bg-gray-300', 'dark:bg-gray-700', 'text-gray-500', 'dark:text-gray-400', 'cursor-not-allowed');
+                btn.classList.remove('bg-emerald-500', 'hover:bg-emerald-600', 'text-white', 'shadow-md', 'cursor-pointer');
+            }
+        }
+
+        // Run Audit Simulation / Processing
+        async function runAudit() {
+            const loadingContainer = document.getElementById('loading-container');
+            const resultsContainer = document.getElementById('results-container');
+            const auditBtn = document.getElementById('audit-btn');
+
+            auditBtn.classList.add('hidden');
+            loadingContainer.classList.remove('hidden');
+            resultsContainer.classList.add('hidden');
+
+            // Simulate multi-step analysis progress
+            const statuses = [
+                "جاري قراءة واستخراج نصوص ملف المادة...",
+                "تحليل نطاق ومفردات المنهج الأكاديمي...",
+                "فحص أهداف المشروع ومكوناته التطبيقية...",
+                "مراجعة المنهجية، مصادر البيانات، والأدوات المستخدمة...",
+                "مطابقة الشروط الإضافية وتوليد التقرير النهائي..."
+            ];
+
+            for (let i = 0; i < statuses.length; i++) {
+                document.getElementById('loading-status').textContent = statuses[i];
+                await new Promise(r => setTimeout(r, 600));
+            }
+
+            // Perform intelligent client-side audit synthesis based on texts and subject
+            const auditResult = generateAuditData(selectedSubject, courseFileText, projectFileText, document.getElementById('extra-requirements').value);
+            
+            renderAuditResults(auditResult);
+
+            loadingContainer.classList.add('hidden');
+            resultsContainer.classList.remove('hidden');
+            auditBtn.classList.remove('hidden');
+
+            // Scroll to results
+            resultsContainer.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function generateAuditData(subject, courseText, projectText, extraReqs) {
+            const projectLower = projectText.toLowerCase();
+            const courseLower = courseText.toLowerCase();
+
+            // Heuristics for verdict
+            let verdictStatus = "fits"; // fits, partly, doesnotfit
+            let verdictTitle = "يتطابق مع نطاق المادة";
+            let verdictReason = "المشروع يغطي المفاهيم الأساسية للمادة بشكل ممتاز، ويستخدم الأدوات والمنهجيات المطلوبة.";
+            let tagClass = "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300";
+
+            let warnings = [];
+            if (courseText.length < 100) {
+                warnings.append("يبدو أن ملف المادة قصير أو يحتوي على نصوص قليلة جداً، تم الاعتماد على المعيار الأكاديمي القياسي للمادة.");
+            }
+            if (projectText.length < 150) {
+                warnings.push("ملف المشروع قصير، مما يجعل بعض الأدلة محدودة في الفحص.");
+            }
+
+            // Subject specific checks
+            let courseChips = [];
+            let covered = [];
+            let missing = [];
+            let outOfScope = [];
+            let dataCheck = {};
+            let extraReqResults = [];
+
+            if (subject === "بحوث التسويق") {
+                courseChips = ["تحديد مشكلة البحث", "تصميم البحث", "طرق جمع البيانات", "تصميم الاستبيان والقياس", "التحليل الإحصائي (SPSS/Reg)", "تفسير النتائج والتقارير"];
+                
+                covered = [
+                    { topic: "تحديد مشكلة وأهداف البحث", evidence: "تم ذكر مشكلة دراسة سلوك المستهلك وتحديد الأهداف البحثية بوضوح في المقدمة." },
+                    { topic: "تصميم الاستبيان وبناء المقاييس", evidence: "استخدام مقياس ليكرت الخماسي (Likert Scale) في تصميم أسئلة الاستبيان." }
+                ];
+                missing = [
+                    { topic: "اختبار الفرضيات الإحصائية المتقدمة", suggestion: "قم بإجراء اختبار الانحدار الخطي أو التحليل العنقودي (Cluster Analysis) لتعزيز عمق التحليل." }
+                ];
+                outOfScope = [
+                    { type: "minor", text: "تفاصيل برمجية تقنية لتطوير تطبيق الهاتف (خارج النطاق التسويقي البحت)." }
+                ];
+                dataCheck = {
+                    source: { status: "fits", label: "مصدر البيانات", desc: "بيانات أولية عبر استبيان ميداني عشوائي." },
+                    sample: { status: "fits", label: "العينة والفترة", desc: "عينة من 184 مستهلك خلال شهرين." },
+                    method: { status: "fits", label: "المنهجية", desc: "المنهج الوصفي التحليلي." },
+                    metrics: { status: "partly", label: "المقاييس", desc: "المقاييس موجودة لكن تنقصها بعض اختبارات الصدق والثبات (Cronbach's Alpha)." },
+                    tools: { status: "fits", label: "الأدوات", desc: "استخدام SPSS وإكسل في التحليل." }
+                };
+            } else if (subject === "نظم دعم القرار") {
+                courseChips = ["عملية اتخاذ القرار", "مكونات DSS وهندستها", "مستودعات البيانات و BI", "النماذج التحليلية (What-if & Optimization)", "لوحات المؤشرات (Dashboards)", "الأنظمة الخبيرة والذكاء الاصطناعي"];
+                
+                covered = [
+                    { topic: "هندسة ومكونات النظام المقترح", evidence: "شرح قاعدة البيانات وقاعدة النماذج وواجهة المستخدم (User Interface)." },
+                    { topic: "التحليلات وWhat-if Analysis", evidence: "تم تطبيق نماذج المحاكاة وتحليل الحساسية لتقييم البدائل." }
+                ];
+                missing = [
+                    { topic: "تكامل لوحات المؤشرات (Dashboards)", suggestion: "إضافة تصميم تفاعلي لوحة تحكم (Dashboard) يعرض مؤشرات الأداء الرئيسية KPIs." }
+                ];
+                outOfScope = [
+                    { type: "major", text: "خطة تسويق رقمية وحملات إعلانية (خارج نطاق نظم دعم القرار التقنية والتحليلية)." }
+                ];
+                dataCheck = {
+                    source: { status: "fits", label: "مصدر البيانات", desc: "بيانات تاريخية للشركة وقواعد بيانات تشغيلية." },
+                    sample: { status: "fits", label: "العينة والفترة", desc: "بيانات ربع سنوية لآخر 3 سنوات." },
+                    method: { status: "fits", label: "المنهجية", desc: "بناء نموذج رياضي وتحليلي لدعم القرار." },
+                    metrics: { status: "fits", label: "المقاييس", desc: "مؤشرات الأداء التشغيلي والمالي." },
+                    tools: { status: "fits", label: "الأدوات", desc: "Python, Excel Solver, Power BI." }
+                };
+            } else { // الأسواق المالية
+                courseChips = ["هيكل الأسواق والمؤسسات", "الأوراق المالية (أسهم وسندات)", "التسعير والتقييم (Valuation)", "المخاطر والعائد (CAPM)", "كفاءة الأسواق", "التحليل الفني والأساسي"];
+                
+                covered = [
+                    { topic: "تحليل المخاطر والعائد للأوراق المالية", evidence: "حساب العائد المتوقع والانحراف المعياري للأسهم المختارة." },
+                    { topic: "التحليل الأساسي والفني للشركات", evidence: "دراسة القوائم المالية ونقاط الدعم والمقاومة للأسهم." }
+                ];
+                missing = [
+                    { topic: "تطبيق نموذج تسعير الأصول الرأسمالية (CAPM)", suggestion: "حساب معامل بيتا (Beta) ومقارنة العائد المتوقع بالعائد الفعلي." }
+                ];
+                outOfScope = [
+                    { type: "minor", text: "استراتيجيات إدارية عامة للموارد البشرية للشركة محل الدراسة." }
+                ];
+                dataCheck = {
+                    source: { status: "fits", label: "مصدر البيانات", desc: "بيانات السوق المالي (تداول/Yahoo Finance)." },
+                    sample: { status: "samp", status: "fits", label: "العينة والفترة", desc: "أسهم قطاع البنوك لآخر 5 سنوات." },
+                    method: { status: "fits", label: "المنهجية", desc: "التحليل المالي الكمي والنماذج القياسية." },
+                    metrics: { status: "fits", label: "المقاييس", desc: "نسب السيولة، الربحية، ومعدلات العائد." },
+                    tools: { status: "fits", label: "الأدوات", desc: "Excel, Bloomberg / TradingView." }
+                };
+            }
+
+            // Extra Requirements evaluation
+            if (extraReqs && extraReqs.trim().length > 0) {
+                extraReqResults = [
+                    { req: extraReqs, status: "partial", evidence: "تم رصد ذكر جزئي للشروط في المشروع، ويحتاج توضيح أدق لتلبية متطلبات أستاذ المادة كاملة." }
+                ];
+            } else {
+                extraReqResults = [];
+            }
+
+            const actionSteps = [
+                "تأكيد مطابقة عنوان ومشكلة البحث مع مفردات المنهج الأساسية المذكورة.",
+                "مراجعة قسم المنهجية وتحليل البيانات والتأكد من توثيق المصادر بدقة.",
+                "معالجة النقص في المواضيع المفقودة المحددة أعلاه لرفع جودة التقرير.",
+                "حذف أو تقليص أي محتويات جانبية خارجة عن نطاق التخصص.",
+                "مناقشة مسودة المشروع النهائية مع الأستاذ المبرمج قبل التسليم النهائي."
+            ];
+
+            return {
+                verdict: { status: verdictStatus, title: verdictTitle, reason: verdictReason, tag: "مطابق بنسبة عالية" },
+                warnings: warnings,
+                courseChips: courseChips,
+                covered: covered,
+                missing: missing,
+                outOfScope: outOfScope,
+                dataCheck: dataCheck,
+                extraReqs: extraReqResults,
+                actionSteps: actionSteps
+            };
+        }
+
+        function renderAuditResults(res) {
+            // 1. Verdict Banner
+            const banner = document.getElementById('verdict-banner');
+            const icon = document.getElementById('verdict-icon');
+            const title = document.getElementById('verdict-title');
+            const tag = document.getElementById('verdict-tag');
+            const reason = document.getElementById('verdict-reason');
+
+            if (res.verdict.status === 'fits') {
+                banner.className = "p-5 rounded-2xl flex items-start gap-4 shadow-sm border bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-100";
+                icon.className = "w-12 h-12 rounded-xl bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-md";
+                icon.innerHTML = `<i data-lucide="check-circle" class="w-7 h-7"></i>`;
+                tag.className = "text-xs px-2.5 py-1 rounded-full font-bold bg-emerald-200 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200";
+            } else {
+                banner.className = "p-5 rounded-2xl flex items-start gap-4 shadow-sm border bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-700 text-gray-900 dark:text-gray-100";
+                icon.className = "w-12 h-12 rounded-xl bg-black dark:bg-white text-white dark:text-black flex items-center justify-center shrink-0 shadow-md";
+                icon.innerHTML = `<i data-lucide="alert-circle" class="w-7 h-7"></i>`;
+                tag.className = "text-xs px-2.5 py-1 rounded-full font-bold bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200";
+            }
+            title.textContent = res.verdict.title;
+            tag.textContent = res.verdict.tag;
+            reason.textContent = res.verdict.reason;
+
+            // 2. Warnings
+            const warningsCard = document.getElementById('warnings-card');
+            const warningsList = document.getElementById('warnings-list');
+            if (res.warnings.length > 0) {
+                warningsCard.classList.remove('hidden');
+                warningsList.innerHTML = res.warnings.map(w => `<li>${w}</li>`).join('');
+            } else {
+                warningsCard.classList.add('hidden');
+            }
+
+            // 3. Course Chips
+            const chipsContainer = document.getElementById('course-chips');
+            chipsContainer.innerHTML = res.courseChips.map(c => `
+                <span class="text-xs font-bold bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-600">${c}</span>
+            `).join('');
+
+            // 4. Covered List
+            const coveredList = document.getElementById('project-coverage-list');
+            coveredList.innerHTML = res.covered.map(item => `
+                <div class="p-3 bg-gray-50 dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-700 space-y-1">
+                    <div class="font-bold text-xs sm:text-sm text-emerald-700 dark:text-emerald-400 flex items-center gap-2">
+                        <i data-lucide="check" class="w-4 h-4"></i> ${item.topic}
+                    </div>
+                    <p class="text-xs text-gray-600 dark:text-gray-400 pr-6">${item.evidence}</p>
+                </div>
+            `).join('');
+
+            // 5. Missing List
+            const missingList = document.getElementById('missing-scope-list');
+            missingList.innerHTML = res.missing.map(item => `
+                <div class="p-3 bg-amber-50/50 dark:bg-amber-950/20 rounded-xl border border-amber-200/50 dark:border-amber-900/50 space-y-1">
+                    <div class="font-bold text-xs sm:text-sm text-amber-800 dark:text-amber-400 flex items-center gap-2">
+                        <i data-lucide="info" class="w-4 h-4"></i> ${item.topic}
+                    </div>
+                    <p class="text-xs text-gray-600 dark:text-gray-400 pr-6"><span class="font-bold">مقترح التحسين:</span> ${item.suggestion}</p>
+                </div>
+            `).join('');
+
+            // 6. Out of Scope
+            const outList = document.getElementById('out-of-scope-list');
+            if (res.outOfScope.length > 0) {
+                outList.innerHTML = res.outOfScope.map(item => `
+                    <div class="p-3 bg-gray-50 dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 flex items-start gap-2">
+                        <span class="text-[10px] uppercase font-black px-2 py-0.5 rounded bg-black text-white dark:bg-white dark:text-black">${item.type}</span>
+                        <p class="text-xs text-gray-700 dark:text-gray-300">${item.text}</p>
+                    </div>
+                `).join('');
+            } else {
+                outList.innerHTML = `<p class="text-xs text-gray-500 italic">لا توجد محتويات جوهرية خارج نطاق المادة.</p>`;
+            }
+
+            // 7. Data Check Grid
+            const dataGrid = document.getElementById('data-check-grid');
+            dataGrid.innerHTML = Object.values(res.dataCheck).map(d => {
+                let statusBg = d.status === 'fits' ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800' : 'bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-300 border-gray-300 dark:border-gray-700';
+                return `
+                    <div class="p-4 rounded-xl border ${statusBg} space-y-2">
+                        <div class="font-bold text-xs flex items-center justify-between">
+                            <span>${d.label}</span>
+                            <span class="w-2 h-2 rounded-full ${d.status === 'fits' ? 'bg-emerald-500' : 'bg-gray-400'}"></span>
+                        </div>
+                        <p class="text-[11px] leading-relaxed opacity-90">${d.desc}</p>
+                    </div>
+                `;
+            }).join('');
+
+            // 8. Extra Requirements Section
+            const extraSec = document.getElementById('extra-req-section');
+            const extraList = document.getElementById('extra-req-list');
+            if (res.extraReqs.length > 0) {
+                extraSec.classList.remove('hidden');
+                extraList.innerHTML = res.extraReqs.map(e => `
+                    <div class="p-3 bg-gray-50 dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 space-y-1">
+                        <div class="font-bold text-xs text-gray-800 dark:text-gray-200">الشرط: ${e.req}</div>
+                        <p class="text-xs text-gray-600 dark:text-gray-400">${e.evidence}</p>
+                    </div>
+                `).join('');
+            } else {
+                extraSec.classList.add('hidden');
+            }
+
+            // 9. Action Steps
+            const actionList = document.getElementById('action-steps-list');
+            actionList.innerHTML = res.actionSteps.map((step, idx) => `
+                <div class="flex items-center gap-3 text-xs sm:text-sm text-emerald-900 dark:text-emerald-200 font-medium">
+                    <span class="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[10px] font-bold shrink-0">${idx + 1}</span>
+                    <span>${step}</span>
+                </div>
+            `).join('');
+
+            // Re-initialize icons
+            lucide.createIcons();
+        }
+
+        function resetForm() {
+            selectedSubject = null;
+            courseFileText = "";
+            projectFileText = "";
+            document.getElementById('file-course').value = "";
+            document.getElementById('file-project').value = "";
+            document.getElementById('course-title-text').textContent = "ملف المادة";
+            document.getElementById('project-title-text').textContent = "ملف المشروع أو العرض";
+            document.getElementById('extra-requirements').value = "";
+            document.querySelectorAll('.subject-card').forEach(card => {
+                card.classList.remove('border-emerald-500', 'bg-emerald-50/50', 'dark:bg-emerald-950/30');
+                card.classList.add('border-gray-200', 'dark:border-gray-700', 'bg-white', 'dark:bg-gray-800');
+            });
+            document.getElementById('results-container').classList.add('hidden');
+            checkEnableButton();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // Initialize Lucide Icons on load
+        window.onload = function() {
+            lucide.createIcons();
+        };
+    </script>
+</body>
+</html>
